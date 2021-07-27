@@ -5,3 +5,4 @@ lxml
 pillow
 pytesseract
 urllib3
+selenium
