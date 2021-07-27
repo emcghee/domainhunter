@@ -431,6 +431,7 @@ Examples:
     parser.add_argument('-ke','--keyword-end', help='Keyword ends with used to refine search results', required=False, default="", type=str, dest='keyword_end')
     parser.add_argument('-um','--umbrella-apikey', help='API Key for umbrella (paid)', required=False, default="", type=str, dest='umbrella_apikey')
     parser.add_argument('-q','--quiet', help='Surpress initial ASCII art and header', required=False, default=False, action='store_true', dest='quiet')
+    parser.add_argument('--test', help='Testing a new option that uses manual domain fetching rather than automated.', required=False, default=False, action='store_true', dest='test')
     args = parser.parse_args()
 
     # Load dependent modules
@@ -491,6 +492,8 @@ Examples:
     keyword_end = args.keyword_end
 
     umbrella_apikey = args.umbrella_apikey
+
+    test = args.test
 
     malwaredomainsURL = 'https://gitlab.com/gerowen/old-malware-domains-ad-list/-/raw/master/malwaredomainslist.txt'
     expireddomainsqueryURL = 'https://www.expireddomains.net/domain-name-search'
@@ -570,13 +573,14 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
 
     # Generate list of URLs to query for expired/deleted domains
     urls = []
-    if username == None or username == "":
-        print('[-] Error: ExpiredDomains.net requires a username! Use the --username parameter')
-        exit(1)
-    if args.password == None or args.password == "":
-        password = getpass.getpass("expireddomains.net Password: ")
+    if not test:
+        if username == None or username == "":
+            print('[-] Error: ExpiredDomains.net requires a username! Use the --username parameter')
+            exit(1)
+        if args.password == None or args.password == "":
+            password = getpass.getpass("expireddomains.net Password: ")
 
-    loginExpiredDomains()
+        loginExpiredDomains()
     
     m = 200
     if maxresults < m:
@@ -591,9 +595,15 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
     max_reached = False
     for url in urls:
 
-        print("[*] {}".format(url))
-        domainrequest = s.get(url,headers=headers,verify=False,proxies=proxies)
-        domains = domainrequest.text
+        if not test:
+            print("[*] {}".format(url))
+            domainrequest = s.get(url,headers=headers,verify=False,proxies=proxies)
+            domains = domainrequest.text
+        else:
+            print("[*] Browse and save the HTML contents to a file: {}".format(url))
+            htmlFile = input("[+] Enter the path to that file: ")
+            with open(htmlFile, 'rt') as readFile:
+                domains = readFile.read()
    
         # Turn the HTML into a Beautiful Soup object
         soup = BeautifulSoup(domains, 'html.parser')
@@ -671,8 +681,9 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
             print("[!] Error: ", e)
             pass
 
-        # Add additional sleep on requests to ExpiredDomains.net to avoid errors
-        time.sleep(5)
+        if not test:
+            # Add additional sleep on requests to ExpiredDomains.net to avoid errors
+            time.sleep(5)
 
     # Check for valid list results before continuing
     if len(domain_list) == 0:
