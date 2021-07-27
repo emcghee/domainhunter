@@ -414,7 +414,7 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('-a','--alexa', help='Filter results to Alexa listings', required=False, default=0, action='store_const', const=1)
-    parser.add_argument('-k','--keyword', help='Keyword used to refine search results', required=False, default=False, type=str, dest='keyword')
+    parser.add_argument('-k','--keyword', help='Keyword used to refine search results', required=False, nargs='*', dest='keywords')
     parser.add_argument('-c','--check', help='Perform domain reputation checks', required=False, default=False, action='store_true', dest='check')
     parser.add_argument('-f','--filename', help='Specify input file of line delimited domain names to check', required=False, default=False, type=str, dest='filename')
     parser.add_argument('--ocr', help='Perform OCR on CAPTCHAs when challenged', required=False, default=False, action='store_true')
@@ -469,7 +469,7 @@ Examples:
 
     alexa = args.alexa
 
-    keyword = args.keyword
+    keywords = args.keywords
     
     check = args.check
 
@@ -588,9 +588,10 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
 
     for i in range (0,(maxresults),m):
         k=""
-        if keyword:
-            k=keyword
-        urls.append('{}/domains/combinedexpired/?fwhois=22&fadult=1&start={}&ftlds[]=2&ftlds[]=3&ftlds[]=4&flimit={}&fdomain={}&fdomainstart={}&fdomainend={}&falexa={}'.format(expireddomainHost,i,m,k,keyword_start,keyword_end,alexa))
+        if keywords:
+            for keyword in keywords:
+                k=keyword
+                urls.append('{}/domains/combinedexpired/?fwhois=22&fadult=1&start={}&ftlds[]=2&ftlds[]=3&ftlds[]=4&flimit={}&fdomain={}&fdomainstart={}&fdomainend={}&falexa={}'.format(expireddomainHost,i,m,k,keyword_start,keyword_end,alexa))
 
     max_reached = False
     for url in urls:
@@ -657,10 +658,10 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
                     
                     # Only grab status for keyword searches since it doesn't exist otherwise
                     status = ""
-                    if keyword:
+                    if keywords:
                         status = c14
 
-                    if keyword:
+                    if keywords:
                         # Only add Expired, not Pending, Backorder, etc
                         # "expired" isn't returned any more, I changed it to "available"
                         if c14 == "available": # I'm not sure about this, seems like "expired" isn't an option anymore.  expireddomains.net might not support this any more.
