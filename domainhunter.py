@@ -714,6 +714,11 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
                 unwantedResults = ['Uncategorized','error','Not found.','Spam','Spam URLs','Pornography','badurl','Suspicious','Malicious Sources/Malnets','captcha','Phishing','Placeholders']
                 
                 bluecoat = checkBluecoat(domain)
+                if 'Is your IP blocked?' in bluecoat:
+                    print("[+] Bluecoat - {}: {}".format(domain, bluecoat))
+                    
+                    sys.exit(1)
+
                 if bluecoat not in unwantedResults:
                     print("[+] Bluecoat - {}: {}".format(domain, bluecoat))
                 
