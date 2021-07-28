@@ -408,6 +408,7 @@ def autoHunting(urls, username, password):
         chromedriver = './chromedriver'
         if not os.path.exists(chromedriver):
             print("[-] Error: chromedriver not found at '{}'".format(chromedriver))
+            print("[+] Can download from here: https://chromedriver.chromium.org/downloads")
             sys.exit(1)
 
         options = webdriver.ChromeOptions()
