@@ -8,6 +8,11 @@ This Python based tool was written to quickly query the Expireddomains.net searc
 
 ## Changelog
 
+- 28 July 2021
+    + Fixed HTML output to not include domains with no desirable categorizations
+    + Added '--auto' code which uses selenium to automate browser functionality, should help mitigate expired domains locking accounts out
+    + Requires chromedriver to beinstalled from here: https://chromedriver.chromium.org/downloads
+
 - 07 January 2021
    + Fix Symantec Site Review (Bluecoat) reputation checking to bypass XSRF and additional POST parameter checks
    + Temporary fix for broken malware domains link. This service is no longer offered in the form used by DomainHunter.
