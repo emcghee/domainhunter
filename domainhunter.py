@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 import getpass
 from selenium import webdriver
 import tempfile
+import pickle
 
 __version__ = "20210107"
 
@@ -490,7 +491,7 @@ def autoHunting(urls, username, password):
                         if keywords:
                             # Only add Expired, not Pending, Backorder, etc
                             # "expired" isn't returned any more, I changed it to "available"
-                            if c14 == "available": # I'm not sure about this, seems like "expired" isn't an option anymore.  expireddomains.net might not support this any more.
+                            if c10 == "available": # I'm not sure about this, seems like "expired" isn't an option anymore.  expireddomains.net might not support this any more.
                                 # Append parsed domain data to list if it matches our criteria (.com|.net|.org and not a known malware domain)
                                 if (c0.lower().endswith(".com") or c0.lower().endswith(".net") or c0.lower().endswith(".org")) and (c0 not in maldomainsList):
                                     domain_list.append([c0,c3,c4,available,status])
@@ -509,6 +510,7 @@ def autoHunting(urls, username, password):
                 pass
 
             # Add additional sleep on requests to ExpiredDomains.net to avoid errors
+            print(f"Total Domains Parsed: {len(domain_list)}")
             time.sleep(5)
 
         return domain_list
@@ -554,6 +556,8 @@ Examples:
     parser.add_argument('-um','--umbrella-apikey', help='API Key for umbrella (paid)', required=False, default="", type=str, dest='umbrella_apikey')
     parser.add_argument('-q','--quiet', help='Surpress initial ASCII art and header', required=False, default=False, action='store_true', dest='quiet')
     parser.add_argument('--auto', help='Automate fetching the html with selenium.', required=False, default=False, action='store_true', dest='auto')
+    parser.add_argument('--temp', help='Read domains from temp file.', required=False, default=False, action='store_true', dest='temp')
+    parser.add_argument('--load', help='Load data from temp file.', required=False, default=False, action='store_true', dest='load')
     args = parser.parse_args()
 
     # Load dependent modules
@@ -616,6 +620,8 @@ Examples:
     umbrella_apikey = args.umbrella_apikey
 
     auto = args.auto
+    temp = args.temp
+    load = args.load
 
     malwaredomainsURL = 'https://gitlab.com/gerowen/old-malware-domains-ad-list/-/raw/master/malwaredomainslist.txt'
     expireddomainsqueryURL = 'https://www.expireddomains.net/domain-name-search'
@@ -715,9 +721,13 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
                 k=keyword
                 urls.append('{}/domains/combinedexpired/?fwhois=22&fadult=1&start={}&ftlds[]=2&ftlds[]=3&ftlds[]=4&flimit={}&fdomain={}&fdomainstart={}&fdomainend={}&falexa={}'.format(expireddomainHost,i,m,k,keyword_start,keyword_end,alexa))
 
-    if auto:
+    # Temp = False and Auto = True
+    if not temp and auto:
         domain_list = autoHunting(urls, username, password)
-    else:
+        with open('temp.pkl', 'wb') as writeFile:
+            pickle.dump(domain_list, writeFile)
+    # Temp = False and Auto = False
+    elif not temp:
         max_reached = False
         for url in urls:
             print("[*] {}".format(url))
@@ -802,6 +812,10 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
 
             # Add additional sleep on requests to ExpiredDomains.net to avoid errors
             time.sleep(5)
+    # Temp = True
+    else:
+        with open('temp.pkl', 'rb') as readFile:
+            domain_list = pickle.load(readFile)
 
     # Check for valid list results before continuing
     if len(domain_list) == 0:
@@ -816,7 +830,15 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
             print("\n[*] Performing reputation checks for {} domains".format(len(domain_list_unique)))
             print("")
 
-        for domain_entry in domain_list_unique:
+        if not load:
+            response = input("[*] Do you want to read existing data from data.pkl? [y/n] ")
+            load = response.lower() == "y" or response.lower() == "yes"
+
+        if load:
+            with open('data.pkl', 'rb') as readFile:
+                data = pickle.load(readFile)
+
+        for index, domain_entry in enumerate(domain_list_unique):
             domain = domain_entry[0]
             birthdate = domain_entry[1]
             archiveentries = domain_entry[2]
@@ -833,23 +855,30 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
                 
                 bluecoat = checkBluecoat(domain)
                 if 'Is your IP blocked?' in bluecoat:
-                    print("[+] Bluecoat - {}: {}".format(domain, bluecoat))
+                    print(f"[-] Bluecoat - {domain}: HTTP Error (422-Unprocessable Entity) - Is your IP blocked?")
 
+                    response = input("[*] Bypass the error (if the domain looks invalid)[y/n]? ")
+                    if response.lower() != "y" and response.lower() != "yes":
+                        # Get the rest of the list
+                        theRest = domain_list_unique[index:]
+                        # Print out to temp file
+                        with open('temp.pkl', 'wb') as writeFile:
+                            pickle.dump(theRest, writeFile)
+                        # Output current known aka (data)
+                        with open('data.pkl', 'wb') as writeFile:
+                            pickle.dump(data, writeFile)
+                        # Quit
+                        exit(1)
+                    
                 if bluecoat not in unwantedResults:
                     print("[+] Bluecoat - {}: {}".format(domain, bluecoat))
+                    if 'Is your IP blocked?' not in bluecoat:
+                        with open('categories.txt', 'a+t') as writeFile:
+                            writeFile.write("[+] Bluecoat - {}: {}\n".format(domain, bluecoat))
                 
-                ibmxforce = checkIBMXForce(domain)
-                if ibmxforce not in unwantedResults:
-                    print("[+] IBM XForce - {}: {}".format(domain, ibmxforce))
+                ibmxforce = 'Uncategorized'
                 
-                ciscotalos = checkTalos(domain)
-                if ciscotalos not in unwantedResults:
-                    print("[+] Cisco Talos {}: {}".format(domain, ciscotalos))
-
-                if len(umbrella_apikey):
-                    umbrella = checkUmbrella(domain)
-                    if umbrella not in unwantedResults:
-                        print("[+] Umbrella {}: {}".format(domain, umbrella))
+                ciscotalos = 'Uncategorized'
 
                 print("")
                 # Sleep to avoid captchas
@@ -863,6 +892,11 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
 
     # Sort domain list by column 2 (Birth Year)
     sortedDomains = sorted(data, key=lambda x: x[1], reverse=True) 
+
+    # Move data.pkl
+    os.rename('data.pkl', '.data.pkl')
+    # Move temp.pkl
+    os.rename('temp.pkl', '.temp.pkl')
 
     if check:
         if len(sortedDomains) == 0:
