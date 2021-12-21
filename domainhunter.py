@@ -21,6 +21,7 @@ import getpass
 from selenium import webdriver
 import tempfile
 import pickle
+import os.path
 
 __version__ = "20210107"
 
@@ -894,9 +895,11 @@ If you plan to use this content for illegal purpose, don't.  Have a nice day :)\
     sortedDomains = sorted(data, key=lambda x: x[1], reverse=True) 
 
     # Move data.pkl
-    os.rename('data.pkl', '.data.pkl')
+    if os.path.exists('data.pkl'):
+        os.rename('data.pkl', '.data.pkl')
     # Move temp.pkl
-    os.rename('temp.pkl', '.temp.pkl')
+    if os.path.exists('temp.pkl'):
+        os.rename('temp.pkl', '.temp.pkl')
 
     if check:
         if len(sortedDomains) == 0:
